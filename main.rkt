@@ -1,10 +1,11 @@
 #lang racket/base
-(require redex/reduction-semantics)
+(require redex/reduction-semantics
+         "redex-util.rkt")
 
 ;; ------------------------------------------------------------
 ;; base utyped language
 
-(define-language Rust
+(define-extended-language Rust Base
   [x ℓ ::= variable-not-otherwise-mentioned]
   [i ::= integer]
   [q ::= imm mut]
