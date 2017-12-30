@@ -2,8 +2,7 @@
 (require redex/reduction-semantics)
 
 ;; ------------------------------------------------------------
-;; base language definition
-;; ------------------------------------------------------------
+;; base utyped language
 
 (define-language Rust
   [x ℓ ::= variable-not-otherwise-mentioned]
@@ -16,11 +15,15 @@
      i
      (let ℓ ([x e]) e)
      (new e)
-     (in-hole p x)
-     (ref q ℓ (in-hole p x))]
+     lv
+     (ref q ℓ lv)]
 
   ; paths
-  [p ::=
-     hole
-     (* p)]
+  [p ::= hole (* p)]
+
+  ; an l-value is just a variable + path
+  [lv ::= (in-hole p x)]
   )
+
+(define lv?
+  (redex-match? Rust lv))
