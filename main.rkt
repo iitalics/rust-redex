@@ -3,28 +3,26 @@
          "redex-util.rkt")
 
 ;; ------------------------------------------------------------
-;; base utyped language
+;; base untyped language
 
 (define-extended-language Rust Base
   [x ℓ ::= variable-not-otherwise-mentioned]
   [i ::= integer]
   [q ::= imm mut]
 
-  ; expressions
+  ; l-values; paths from a variable
+  [lv ::= (in-hole p x)]
+  ; paths
+  [p ::= (* p) hole]
+  ; expressions (r-values)
   [e ::=
-     unit
-     i
+     c
+     lv
+     (ref ℓ q lv)
      (let ℓ ([x e]) e)
      (new e)
-     lv
-     (ref ℓ q lv)]
-
-  ; paths
-  [p ::= hole (* p)]
-
-  ; an l-value is just a variable + path
-  [lv ::= (in-hole p x)]
-  )
+     (do e ... e)]
+  [c ::= i | unit])
 
 (define lv?
   (redex-match? Rust lv))
@@ -34,15 +32,22 @@
 ;; types
 
 (define-extended-language Rust+T Rust
+  ; base types
+  [bτ ::= Unit Integer]
   ; types
   [τ ::=
-     Unit
-     Integer
+     BT
      [Ref ℓ q τ]
      [Ptr τ]]
-
   ; type context
-  [Γ ::= ([x τ] ...)])
+  [Γ ::= ([x τ] ...)]
+  ; variable lifetimes
+  [L ::= ([x ℓ] ...)])
+
+(define-metafunction Rust+T
+  typeof-c : c -> BT
+  [(typeof-c i) Integer]
+  [(typeof-c unit) Unit])
 
 (define-judgment-form Rust+T
   ;; typecheck l-values
@@ -65,3 +70,20 @@
   (test-judgment-holds (⊢lv ([x (Ptr Integer)]) x (Ptr Integer)))
   (test-judgment-holds (⊢lv ([x (Ptr Integer)]) (* x) Integer))
   (test-judgment-holds (⊢lv ([x (Ref ℓ1 imm Unit)]) (* x) Unit)))
+
+
+;; ------------------------------------------------------------
+;; shadow heap
+
+(define-extended-language Rust+S Rust
+  ; loan "bank"
+  [$ ::= ((ℓ q) ...)]
+  ; shadow types
+  [sτ ::=
+      BT
+      uninit
+      [Ptr s]]
+  ; shadows
+  [s ::= ($ sτ)]
+  ; shadow heap
+  [Y ::= ([x s] ...)])
