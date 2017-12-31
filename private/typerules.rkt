@@ -29,4 +29,7 @@
 (module+ test
   (test-judgment-holds (⊢lv ([x [Ptr Integer]]) x (Ptr Integer)))
   (test-judgment-holds (⊢lv ([x [Ptr Integer]]) (* x) Integer))
-  (test-judgment-holds (⊢lv ([x [Ref ℓ imm Unit]]) (* x) Unit)))
+  (test-judgment-holds (⊢lv ([x [Ref ℓ IMM Unit]]) (* x) Unit)))
+
+(module+ test
+  (test-results))

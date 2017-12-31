@@ -12,13 +12,12 @@
 (define-extended-language Rust Base
   [x ℓ ::= variable-not-otherwise-mentioned] ; variables, lifetimes
   [i ::= integer]
-  [q ::= imm mut]
-
-  ; l-values; paths from a variable
-  [lv ::= (in-hole p x)]
-  ; paths
-  [p ::= (* p) hole]
-  ; expressions (r-values)
+  [q ::= MUT IMM]
+  ; l-values
+  [lv ::=
+      x
+      (* lv)]
+  ; r-values
   [e ::=
      c
      lv
@@ -34,8 +33,8 @@
 (define const?
   (redex-match? Rust c))
 
-#;; new forms added in Rust+V, so that is used instead
-(define expr?
+#;; new forms added in Rust+V, so rvalue? is actually defined further down
+(define rvalue?
   (redex-match? Rust e))
 
 (define lvalue?
@@ -84,11 +83,14 @@
 
 (define-extended-language Rust+V Rust
   [a ::= variable-not-otherwise-mentioned] ; addresses
-  ; values
+  ; pointers (addresses with a route)
+  [ptr ::= a]
+  ; value layout
   [v ::=
      c
-     (ptr a)
-     (ref q a)]
+     uninit
+     (own a)
+     (ref q ptr)]
   ; variable->address map
   [V ::= ([x a] ...)]
   ; heap store
