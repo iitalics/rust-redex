@@ -103,38 +103,36 @@
      (ref q a)]
   ; variable->address map
   [V ::= ([x a] ...)]
-  ; heap sotre
+  ; heap store
   [H ::= ([a v] ...)]
   ; additional expressions
   [e ::= ....
      v
-     (pop x e)]
+     (pop [x] e)]
   ; evaluation context
   [E ::=
      (let ℓ ([x E]) e)
      (new E)
      (do E e ...)
-     (pop x E)
-     hole]
-  #:binding-forms
-  (pop x e #:refers-to x))
+     (pop [x] E)
+     hole])
 
 (define-judgment-form Rust+V
   ;; evaluate l-value address
   #:mode (lv= I I I O)
   #:contract (lv= H V lv a)
   [(where [a] (find x V))
-   ------
+   ------ "EL-Var"
    (lv= H V x a)]
 
   [(lv= H V lv a_1)
    (where [(ref _ a_2)] (find a_1 H))
-   ------
+   ------ "EL-De-ref"
    (lv= H V (* lv) a_2)]
 
   [(lv= H V lv a_1)
    (where [(ptr a_2)] (find a_1 H))
-   ------
+   ------ "EL-De-ptr"
    (lv= H V (* lv) a_2)])
 
 
@@ -164,12 +162,12 @@
    (--> (H V (in-hole E (let _ ([x v]) e)))
         (([a v] [a_3 v_3] ...)
          ([x a] [x_2 a_2] ...)
-         (in-hole E (pop x e)))
+         (in-hole E (pop [x] e)))
         "R-let"
         (where ([x_2 a_2] ...) V)
         (where ([a_3 v_3] ...) H))
 
-   (--> (H   V   (in-hole E (pop x v)))
+   (--> (H   V   (in-hole E (pop [x] v)))
         (H_2 V_2 (in-hole E v))
         "R-pop"
         (where [a] (find x V))
@@ -181,11 +179,6 @@
   (test-judgment-holds (lv= ([a (ptr b)]) ([x a]) (* x) b))
   (test-judgment-holds (lv= ([a (ref imm b)]) ([x a]) (* x) b))
 
-  (test-equal (redex-match? Rust+V
-                            (in-hole E (pop x v))
-                            (term (pop x 3)))
-              #t)
-
   (test--> RRR
            (term (()      () (new 4)))
            (term (([a 4]) () (ptr a))))
@@ -194,11 +187,11 @@
            (term (([a unit]) ([x a]) (ref imm a))))
   (test--> RRR
            (term (() () (let ℓo ([x 3]) (ref ℓ imm x))))
-           (term (([a 3]) ([x a]) (pop x (ref ℓ imm x)))))
+           (term (([a 3]) ([x a]) (pop [x] (ref ℓ imm x)))))
 
   ; redex is failing to reduce this pop expression :/
   (test--> RRR
-           (term (([a 0]) ([x a]) (pop x 4)))
+           (term (([a 3]) ([x a]) (pop [x] 4)))
            (term (() () 4)))
 
   (test-->> RRR
