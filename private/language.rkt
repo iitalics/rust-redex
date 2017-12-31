@@ -18,14 +18,17 @@
       x
       (* lv)]
   ; r-values
+  [rv ::=
+      lv
+      (ref ℓ q lv)]
+  ; compound expressions
   [e ::=
      c
-     lv
-     (ref ℓ q lv)
-     (set! lv e)
-     (new e)
+     rv
+     (let ℓ ([x e]) e)
      (do e e ...)
-     (let ℓ ([x e]) e)]
+     (set! lv e)
+     (new e)]
   [c ::= i unit]
   #:binding-forms
   (let ℓ ([x e]) e #:refers-to x))
@@ -33,12 +36,12 @@
 (define const?
   (redex-match? Rust c))
 
-#;; new forms added in Rust+V, so rvalue? is actually defined further down
-(define rvalue?
-  (redex-match? Rust e))
-
 (define lvalue?
   (redex-match? Rust lv))
+
+#;; new forms added in Rust+V, so rvalue? is actually defined at the bottom
+(define rvalue?
+  (redex-match? Rust rv))
 
 ;; ------------------------------------------------------------
 ;; types
@@ -96,20 +99,21 @@
   ; heap store
   [H ::= ([a v] ...)]
   ; additional expressions
-  [e ::= ....
-     v
-     (pop [x] e)]
+  [e ::= .... v (pop [x] e)]
   ; evaluation context
   [E ::=
-     (set! lv E)
-     (new E)
-     (do E e ...)
      (let ℓ ([x E]) e)
      (pop [x] E)
+     (do v ... E e ...)
+     (set! lv E)
+     (new E)
      hole])
 
 (define value?
   (redex-match? Rust+V v))
 
 (define rvalue?
+  (redex-match? Rust+V rv))
+
+(define expression?
   (redex-match? Rust+V e))
