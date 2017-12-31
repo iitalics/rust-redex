@@ -23,9 +23,9 @@
      c
      lv
      (ref ℓ q lv)
-     (let ℓ ([x e]) e)
      (new e)
-     (do e e ...)]
+     (do e e ...)
+     (let ℓ ([x e]) e)]
   [c ::= i unit]
   #:binding-forms
   (let ℓ ([x e]) e #:refers-to x))
@@ -98,9 +98,9 @@
      (pop [x] e)]
   ; evaluation context
   [E ::=
-     (let ℓ ([x E]) e)
      (new E)
      (do E e ...)
+     (let ℓ ([x E]) e)
      (pop [x] E)
      hole])
 

@@ -2,26 +2,36 @@
 (require redex/reduction-semantics
          "redex-util.rkt"
          "language.rkt")
-(provide lv= RRR)
+(provide addr-of RRR)
+
+(define-metafunction Rust+V
+  H-read : H a -> v or #f
+  [(H-read H a) v
+   (where [v] (find a H))]
+  [(H-read _ _) #f])
+
+(define-metafunction Rust+V
+  H-write : H a v -> H
+  [(H-write ([a_0 v_0] ... [a_1 _] [a_2 v_2] ...) a_1 v_1)
+   ([a_0 v_0] ... [a_1 v_1] [a_2 v_2] ...)])
 
 (define-judgment-form Rust+V
   ;; evaluate l-value address
-  #:mode (lv= I I I O)
-  #:contract (lv= H V lv a)
+  #:mode (addr-of I I I O)
+  #:contract (addr-of H V lv a)
   [(where [a] (find x V))
    ------ "EL-Var"
-   (lv= H V x a)]
+   (addr-of H V x a)]
 
-  [(lv= H V lv a_1)
-   (where [(ref _ a_2)] (find a_1 H))
+  [(addr-of H V lv a_1)
+   (where (ref _ a_2) (H-read H a_1))
    ------ "EL-De-ref"
-   (lv= H V (* lv) a_2)]
+   (addr-of H V (* lv) a_2)]
 
-  [(lv= H V lv a_1)
-   (where [(ptr a_2)] (find a_1 H))
+  [(addr-of H V lv a_1)
+   (where (ptr a_2) (H-read H a_1))
    ------ "EL-De-ptr"
-   (lv= H V (* lv) a_2)])
-
+   (addr-of H V (* lv) a_2)])
 
 (define RRR
   ;; "rust reduction relation"
@@ -30,7 +40,7 @@
    (--> (H V (in-hole E (ref _ q lv)))
         (H V (in-hole E (ref q a)))
         "R-ref"
-        (judgment-holds (lv= H V lv a)))
+        (judgment-holds (addr-of H V lv a)))
 
    (--> (H   V (in-hole E (new v)))
         (H_2 V (in-hole E (ptr a)))
@@ -62,9 +72,9 @@
         (where H_2 (rem a H)))))
 
 (module+ test
-  (test-judgment-holds (lv= () ([x a]) x a))
-  (test-judgment-holds (lv= ([a (ptr b)]) ([x a]) (* x) b))
-  (test-judgment-holds (lv= ([a (ref imm b)]) ([x a]) (* x) b))
+  (test-judgment-holds (addr-of () ([x a]) x a))
+  (test-judgment-holds (addr-of ([a (ptr b)]) ([x a]) (* x) b))
+  (test-judgment-holds (addr-of ([a (ref imm b)]) ([x a]) (* x) b))
 
   (test--> RRR
            (term (()      () (new 4)))
