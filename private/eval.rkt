@@ -42,6 +42,12 @@
         "R-ref"
         (judgment-holds (addr-of H V lv a)))
 
+   (--> (H   V (in-hole E (set! lv v)))
+        (H_2 V (in-hole E unit))
+        "R-set!"
+        (judgment-holds (addr-of H V lv a))
+        (where H_2 (H-write H a v)))
+
    (--> (H   V (in-hole E (new v)))
         (H_2 V (in-hole E (ptr a)))
         "R-new"
@@ -85,12 +91,13 @@
   (test--> RRR
            (term (() () (let ℓo ([x 3]) (ref ℓ imm x))))
            (term (([a 3]) ([x a]) (pop [x] (ref ℓ imm x)))))
-
-  ; redex is failing to reduce this pop expression :/
   (test--> RRR
            (term (([a 3]) ([x a]) (pop [x] 4)))
            (term (() () 4)))
-
+  (test--> RRR
+           (term (([a 0]) ([x a]) (set! x 2)))
+           (term (([a 2]) ([x a]) unit)))
   (test-->> RRR
             (term (() () (do 1 2 3 4)))
-            (term (() () 4))))
+            (term (() () 4)))
+  )

@@ -23,6 +23,7 @@
      c
      lv
      (ref ℓ q lv)
+     (set! lv e)
      (new e)
      (do e e ...)
      (let ℓ ([x e]) e)]
@@ -98,6 +99,7 @@
      (pop [x] e)]
   ; evaluation context
   [E ::=
+     (set! lv E)
      (new E)
      (do E e ...)
      (let ℓ ([x E]) e)
