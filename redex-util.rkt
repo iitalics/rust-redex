@@ -1,6 +1,8 @@
 #lang racket/base
-(require redex/reduction-semantics)
-(provide Base find)
+(require redex/reduction-semantics
+         (only-in racket/list remf))
+(provide Base
+         find rem)
 
 (define-language Base)
 
@@ -18,6 +20,20 @@
 (module+ test
   (test-equal (term (find x ([y 3] [x 4] [x 5]))) '[4])
   (test-equal (term (find z ([y 3] [x 4] [x 5]))) #f))
+
+
+(define-metafunction Base
+  ;; given key k and list l, remove first pair [k v] from l
+  rem : any (any ...) -> (any ...)
+  [(rem any_k any_l) ,(remf (λ (p) ((default-equiv)
+                                    (car p)
+                                    (term any_k)))
+                            (term any_l))])
+
+(module+ test
+  (test-equal (term (rem x ([y 2] [x 4] [x 6]))) (term ([y 2] [x 6])))
+  (test-equal (term (rem z ([y 2] [x 4] [x 6]))) (term ([y 2] [x 4] [x 6]))))
+
 
 (module+ test
   (test-results))
