@@ -2,7 +2,7 @@
 (require redex/reduction-semantics
          "redex-util.rkt"
          "language.rkt")
-(provide H-read H-write lv--> rv--> RRR)
+(provide H-read H-write lv--> RRR)
 
 (module+ test
 
@@ -54,32 +54,29 @@
    ------ "EL-Deown"
    (lv--> (H V (* lv)) a_2)])
 
-(define-judgment-form Rust+V
-  ;; evaluate r-value as value
-  #:mode (rv--> I O)
-  #:contract (rv--> (H V rv) (H v))
-  [(lv--> (H V lv) ptr)
-   ------ "ER-Ref"
-   (rv--> (H V (ref ℓ q lv)) (H (ref q ptr)))]
-
-  [(lv--> (H V lv) ptr)
-   (H-read H ptr v)
-   (H-write H ptr (use v) H_2)
-   ------ "ER-Use"
-   (rv--> (H V lv) (H_2 v))])
-
 (module+ test
   (test-judgment-holds (lv--> (,H1 ,V1 x_0)         a_0))
   (test-judgment-holds (lv--> (,H1 ,V1 (* x_0))     a_1))
   (test-judgment-holds (lv--> (,H1 ,V1 (* (* x_0))) a_2))
-  (test-judgment-holds (lv--> (,H2 ,V2 x_1)         a_3))
-  (test-equal (judgment-holds (rv--> (,H2 ,V2 x_1) any) any) `((,H2 9)))
-  (test-equal (judgment-holds (rv--> (,H1 ,V1 x_0) any) any) `((,H4 (own a_1)))))
+  (test-judgment-holds (lv--> (,H2 ,V2 x_1)         a_3)))
 
 
 (define RRR
   (reduction-relation Rust+V
    #:domain (H V e)
+
+   (--> (H   V (in-hole E lv))
+        (H_2 V (in-hole E v))
+        "Use"
+        (judgment-holds (lv--> (H V lv) ptr))
+        (judgment-holds (H-read H ptr v))
+        (judgment-holds (H-write H ptr (use v) H_2)))
+
+   (--> (H V (in-hole E (ref ℓ q lv)))
+        (H V (in-hole E (ref q ptr)))
+        "Ref"
+        (judgment-holds (lv--> (H V lv) ptr)))
+
    (--> (H   V   (in-hole E (let ℓ ([x v]) e)))
         (H_2 V_2 (in-hole E (pop [x] e)))
         "Let"
@@ -98,12 +95,7 @@
 
    (--> (H V (in-hole E (do v_1 ... v_2)))
         (H V (in-hole E v_2))
-        "Done")
-
-   (--> (H   V (in-hole E rv))
-        (H_2 V (in-hole E v))
-        "Rvalue"
-        (judgment-holds (rv--> (H V rv) (H_2 v))))
+        "Do")
 
    (--> (H   V (in-hole E (set! lv v)))
         (H_2 V (in-hole E unit))

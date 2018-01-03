@@ -1,10 +1,7 @@
 #lang racket/base
 (require redex/reduction-semantics
          "redex-util.rkt")
-(provide Rust Rust+T Rust+S Rust+V
-         const? rvalue? lvalue?
-         type? shadow?
-         value?)
+(provide Rust Rust+T Rust+S Rust+V)
 
 ;; ------------------------------------------------------------
 ;; base untyped language
@@ -18,13 +15,10 @@
       x
       (* lv)]
   ; r-values
-  [rv ::=
-      lv
-      (ref ℓ q lv)]
-  ; compound expressions
   [e ::=
      c
-     rv
+     lv
+     (ref ℓ q lv)
      (let ℓ ([x e]) e)
      (do e e ...)
      (set! lv e)
@@ -32,16 +26,6 @@
   [c ::= i unit]
   #:binding-forms
   (let ℓ ([x e]) e #:refers-to x))
-
-(define const?
-  (redex-match? Rust c))
-
-(define lvalue?
-  (redex-match? Rust lv))
-
-#;; new forms added in Rust+V, so rvalue? is actually defined at the bottom
-(define rvalue?
-  (redex-match? Rust rv))
 
 ;; ------------------------------------------------------------
 ;; types
@@ -59,9 +43,6 @@
   ; variable lifetimes
   [L ::= ([x ℓ] ...)])
 
-(define type?
-  (redex-match? Rust+T τ))
-
 ;; ------------------------------------------------------------
 ;; shadow heap
 
@@ -77,9 +58,6 @@
   [s ::= ($ sτ)]
   ; shadow heap
   [Y ::= ([x s] ...)])
-
-(define shadow?
-  (redex-match? Rust+S s))
 
 ;; ------------------------------------------------------------
 ;; heap and evaluation context
@@ -108,12 +86,3 @@
      (set! lv E)
      (new E)
      hole])
-
-(define value?
-  (redex-match? Rust+V v))
-
-(define rvalue?
-  (redex-match? Rust+V rv))
-
-(define expression?
-  (redex-match? Rust+V e))
