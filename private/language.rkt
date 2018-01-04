@@ -43,7 +43,9 @@
   ; variable lifetimes
   [L ::= ([x ℓ] ...)]
   ; lifetime poset
-  [LT ::= ([ℓ < ℓ ...] ...)])
+  [LT ::= ([ℓ < ℓ ...] ...)]
+  ; move vs copy
+  [m/c ::= MOVE COPY])
 
 ;; ------------------------------------------------------------
 ;; shadow heap

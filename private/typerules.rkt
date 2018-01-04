@@ -10,6 +10,15 @@
   <: ⊂ τ × τ
   [(<: τ τ)])
 
+(define-relation Rust+T
+  ;; determine if type is affine ("move") or unrestricted ("copy")
+  affinity ⊂ τ × m/c
+  [(affinity Integer COPY)]
+  [(affinity Unit COPY)]
+  [(affinity [Ref ℓ IMM τ]) COPY]
+  [(affinity [Ref ℓ MUT τ]) MOVE]
+  [(affinity [Ptr τ]) MOVE])
+
 (define-judgment-form Rust+T
   ;; typecheck constants
   #:mode (⊢c I O)
@@ -67,6 +76,14 @@
    (can-write? Y lv)])
 
 (define-judgment-form Rust+S
+  #:mode     (can-move? I I)
+  #:contract (can-move? Y lv)
+  [------ "CM" ; TODO: can-move?
+   (can-move? Y lv)])
+
+;; NOTE: CM => CW => CR
+
+(define-judgment-form Rust+S
   #:contract (valid-for? LT L Γ lv ℓ)
   #:mode     (valid-for? I  I I I  I)
   [------ "VF" ; TODO: valid-for?
@@ -79,13 +96,20 @@
 
   [(⊢c c τ)
    ------ "TR-Const"
-   (⊢ _ _ _ Y c τ Y)]
+   (⊢ LT L Γ Y c τ Y)]
 
   [(⊢lv Γ lv τ)
-   (can-write? Y τ)
-   ; TODO: update Y if necessary
-   ------ "TR-Use"
-   (⊢ _ _ Γ Y lv τ Y)]
+   (affinity τ COPY)
+   (can-read? Y lv)
+   ------ "TR-Copy"
+   (⊢ LT L Γ Y lv τ Y)]
+
+  [(⊢lv Γ lv τ)
+   (affinity τ MOVE)
+   (can-move? Y_1 lv)
+   ; TODO: record use in Y_2
+   ------ "TR-Move"
+   (⊢ LT L Γ Y_1 lv τ Y_1)]
 
   [(⊢lv Γ lv τ)
    (can-read? Y_1 lv)
