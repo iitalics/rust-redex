@@ -2,7 +2,7 @@
 (require redex/reduction-semantics
          "redex-util.rkt")
 
-(provide poset<= poset< pos-≤ pos-<)
+(provide poset<= poset< pos-≤ pos-< pos-ext)
 
 ;; returns #t if x ≤ y according to the partially ordered
 ;; set 'po'. the set is represented as a list of (cons a bs),
@@ -54,5 +54,21 @@
   (define P (term ([b < c d] [a < b] [e < b])))
   (test-equal (term (pos-≤ ,P e e)) #t)
   (test-equal (term (pos-< ,P e d)) #t)
-  (test-equal (term (pos-< ,P e a)) #f)
+  (test-equal (term (pos-< ,P e a)) #f))
+
+(define-metafunction Base
+  ;; extend a poset with a new value, and have that be < all other
+  ;; elements in the set
+  pos-ext : ([any < any ...] ...) any -> ([any < any ...] ...)
+  [(pos-ext ([any_2 < any_3 ...] ...) any_1)
+   ([any_1 < any_2 ...] [any_2 < any_3 ...] ...)])
+
+(module+ test
+  (test-equal (term (pos-ext ,P f))
+              (term ([f < b a e]
+                     [b < c d]
+                     [a < b]
+                     [e < b]))))
+
+(module+ test
   (test-results))

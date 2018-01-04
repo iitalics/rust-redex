@@ -1,7 +1,8 @@
 #lang racket/base
 (require redex/reduction-semantics
          "redex-util.rkt"
-         "language.rkt")
+         "language.rkt"
+         "poset.rkt")
 (provide <: ⊢c ⊢lv ⊢)
 
 (define-relation Rust+T
@@ -42,6 +43,35 @@
   (test-judgment-holds (⊢c 5 Integer))
   (test-judgment-holds (⊢c unit Unit)))
 
+(define-metafunction Rust+S
+  ;; create a fresh (no loans) shadow from the given type
+  fresh-s : τ -> s
+  [(fresh-s BT) (() BT)]
+  [(fresh-s [Ref ℓ q τ]) (() [Ref ℓ q (fresh-s τ)])]
+  [(fresh-s [Ptr τ]) (() [Ptr (fresh-s τ)])])
+
+(module+ test
+  (test-equal (term (fresh-s [Ptr [Ref ℓ IMM Integer]]))
+              (term (() [Ptr (() [Ref ℓ IMM (() Integer)])]))))
+
+(define-judgment-form Rust+S
+  #:mode     (can-read? I I)
+  #:contract (can-read? Y lv)
+  [------ "CR" ; TODO: can-read?
+   (can-read? Y lv)])
+
+(define-judgment-form Rust+S
+  #:mode     (can-write? I I)
+  #:contract (can-write? Y lv)
+  [------ "CW" ; TODO: can-write?
+   (can-write? Y lv)])
+
+(define-judgment-form Rust+S
+  #:contract (valid-for? LT L Γ lv ℓ)
+  #:mode     (valid-for? I  I I I  I)
+  [------ "VF" ; TODO: valid-for?
+   (valid-for? LT L Γ lv ℓ)])
+
 (define-judgment-form Rust+S
   ;; typecheck r-values
   #:mode     (⊢ I  I I I I O O)
@@ -52,29 +82,39 @@
    (⊢ _ _ _ Y c τ Y)]
 
   [(⊢lv Γ lv τ)
-   ; TODO: check can-write, and update Y if necessary
+   (can-write? Y τ)
+   ; TODO: update Y if necessary
    ------ "TR-Use"
    (⊢ _ _ Γ Y lv τ Y)]
 
   [(⊢lv Γ lv τ)
-   ; TODO: check valid
-   ; TODO: check freezable, can-read (IMM)
-   ; TODO: check unique, can-write (MUT)
-   ; TODO: record loan in Y
-   ------ "TR-Ref"
-   (⊢ _ _ Γ Y (ref ℓ q lv) [Ref ℓ q τ] Y)]
+   (can-read? Y_1 lv)
+   (valid-for? LT L Γ lv ℓ)
+   ; TODO: freezable?
+   ; TODO: record loan in Y_2
+   ------ "TR-RefImm"
+   (⊢ LT L Γ Y_1 (ref ℓ IMM lv) [Ref ℓ IMM τ] Y_1)]
+
+  [(⊢lv Γ lv τ)
+   (can-write? Y_1 lv)
+   (valid-for? LT L Γ lv ℓ)
+   ; TODO: unique-access?
+   ; TODO: record loan in Y_2
+   ------ "TR-RefMut"
+   (⊢ LT L Γ Y_1 (ref ℓ MUT lv) [Ref ℓ MUT τ] Y_1)]
 
   [(⊢ LT L Γ Y_1 e_1 τ_1 Y_2)
-   ; TODO: extend LT
-   (⊢ LT
+   (⊢ (pos-ext LT ℓ)
       (ext [x ℓ] L)
       (ext [x τ_1] Γ)
-      Y_2 ; (ext [x s_1] Y_2) ; TODO: create fresh shadow from type
+      (ext [x (fresh-s τ_1)] Y_2)
       e_2 τ_2
       Y_3)
-   ; TODO: well-formedness checks; restrict Y_3
+   (where Y_4 (rem x Y_3))
+   ; TODO: well-formed check
+   ; TODO: remove all ℓ from Y_3
    ------ "TR-Let"
-   (⊢ LT L Γ Y_1 (let ℓ ([x e_1]) e_2) τ_2 Y_3)]
+   (⊢ LT L Γ Y_1 (let ℓ ([x e_1]) e_2) τ_2 Y_4)]
 
   [(⊢ LT L Γ Y_1 e τ Y_2)
    ------ "TR-Do1"
@@ -105,7 +145,11 @@
                           ([x Integer])
                           ([x (() Integer)])
                           x Integer
-                          ([x (() Integer)]))))
+                          ([x (() Integer)])))
+  (test-judgment-holds (⊢ () () () ()
+                          (let ℓ ([x 4]) x) Integer
+                          ()))
+  )
 
 
 (module+ test

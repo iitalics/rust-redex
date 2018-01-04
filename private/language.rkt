@@ -55,8 +55,8 @@
   [sτ ::=
       BT
       uninit
-      [Ptr s]
-      [Ref ℓ q s]]
+      [Ref ℓ q s]
+      [Ptr s]]
   ; shadows
   [s ::= ($ sτ)]
   ; shadow heap
