@@ -52,17 +52,6 @@
   (test-judgment-holds (⊢c 5 Integer))
   (test-judgment-holds (⊢c unit Unit)))
 
-(define-metafunction Rust+S
-  ;; create a fresh (no loans) shadow from the given type
-  fresh-s : τ -> s
-  [(fresh-s BT) (() BT)]
-  [(fresh-s [Ref ℓ q τ]) (() [Ref ℓ q (fresh-s τ)])]
-  [(fresh-s [Ptr τ]) (() [Ptr (fresh-s τ)])])
-
-(module+ test
-  (test-equal (term (fresh-s [Ptr [Ref ℓ IMM Integer]]))
-              (term (() [Ptr (() [Ref ℓ IMM (() Integer)])]))))
-
 (define-judgment-form Rust+S
   #:mode     (can-read? I I)
   #:contract (can-read? Y lv)
@@ -131,7 +120,7 @@
    (⊢ (pos-ext LT ℓ)
       (ext [x ℓ] L)
       (ext [x τ_1] Γ)
-      (ext [x (fresh-s τ_1)] Y_2)
+      (ext [x τ_1] Y_2)
       e_2 τ_2
       Y_3)
    (where Y_4 (rem x Y_3))
@@ -167,9 +156,9 @@
   (test-judgment-holds (⊢ ()
                           ([x ℓ])
                           ([x Integer])
-                          ([x (() Integer)])
+                          ([x Integer])
                           x Integer
-                          ([x (() Integer)])))
+                          ([x Integer])))
   (test-judgment-holds (⊢ () () () ()
                           (let ℓ ([x 4]) x) Integer
                           ()))

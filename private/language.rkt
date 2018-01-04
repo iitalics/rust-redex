@@ -51,8 +51,6 @@
 ;; shadow heap
 
 (define-extended-language Rust+S Rust+T
-  ; loan "bank"
-  [$ ::= ((ℓ q) ...)]
   ; shadow types
   [sτ ::=
       BT
@@ -60,7 +58,8 @@
       [Ref ℓ q s]
       [Ptr s]]
   ; shadows
-  [s ::= ($ sτ)]
+  ;   NOTE: τ ⊆ s
+  [s ::= (loan ℓ q s) sτ]
   ; shadow heap
   [Y ::= ([x s] ...)])
 
