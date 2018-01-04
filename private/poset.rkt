@@ -1,94 +1,58 @@
 #lang racket/base
-(require racket/dict)
-(provide poset?
-         make-poset
-         make-poseteq
-         poset-contains?
-         poset-add!
-         poset-add*!
-         poset-<= (rename-out [poset-<= poset-≤])
-         poset-copy)
+(require redex/reduction-semantics
+         "redex-util.rkt")
 
-;; --------------------------------------------------------------
-;; data structure for partially ordered set (PO-Set)
+(provide poset<= poset< pos-≤ pos-<)
 
-(struct poset [=? elems])
+;; returns #t if x ≤ y according to the partially ordered
+;; set 'po'. the set is represented as a list of (cons a bs),
+;; which indicates that a < b for each b in bs
+;; poset<= : [listof [listof X]] X X -> Boolean
+(define (poset<= pos x y #:equal? [=? equal?])
+  (or (=? x y)
+      (poset< pos x y #:equal? =?)))
 
-(define (make-poset/roots #:dict make-dict
-                          #:equal? =?
-                          roots)
-  (define pos
-    (poset =? (make-dict)))
-  (for ([x (in-list roots)])
-    (poset-add! pos x))
-  pos)
-
-;; X ... -> [poset-of X]
-;; construct a new PO-Set, with any additional args as initial
-;; maximal elements.
-(define (make-poset #:dict [make-dict make-hash]
-                    #:equal? [=? equal?]
-                    . roots)
-  (make-poset/roots #:dict make-dict
-                    #:equal? =?
-                    roots))
-
-;; X ... -> [poset-of X]
-;; construct a new PO-Set using eq? to compare elements
-(define (make-poseteq . roots)
-  (make-poset/roots #:dict make-hasheq
-                    #:equal? eq?
-                    roots))
-
-;; [poset-of X] X -> Bool
-;; does the given poset contain the given element?
-(define (poset-contains? pos x)
-  (dict-has-key? (poset-elems pos) x))
-
-;; [poset-of X] X [listof X] -> Void
-;; add element x to poset, such that each y in ys is greater than x
-(define (poset-add*! pos x ys)
-  (when (poset-contains? pos x)
-    (error 'poset-add! "poset already contains element" x))
-  (dict-set! (poset-elems pos) x ys))
-
-;; [poset-of X] X X ... -> Void
-;; add element x to poset, such that each y in ys is greater than x
-(define (poset-add! pos x . ys)
-  (poset-add*! pos x ys))
-
-;; [poset-of X] X X -> Boolean
-;; [poset-of X] -> [X X -> Boolean]
-;; check the ordering between two elements
-(define poset-<=
-  (case-lambda
-    [(pos) (λ (x y) (poset-<= pos x y))]
-    [(pos x y)
-     (define =? (poset-=? pos))
-     (let trav ([xs (list x)])
-       (for/or ([x (in-list xs)])
-         (or (=? x y)
-             (trav (dict-ref (poset-elems pos) x)))))]))
-
-;; [poset-of X] -> [poset-of X]
-(define (poset-copy pos)
-  (poset (poset-=? pos)
-         (dict-copy (poset-elems pos))))
-
-
-;; ------------------------------
-;; tests
+;; like poset<=, but only returns #t if x < y
+;; poset<= : [listof [listof X]] X X -> Boolean
+(define (poset< pos x y #:equal? [=? equal?])
+  (cond
+    [(assoc x pos)
+     => (λ (rel)
+          (for/or ([x- (in-list (cdr rel))])
+            (poset<= pos x- y #:equal? =?)))]
+    [else #f]))
 
 (module+ test
-  (require rackunit)
-  (define P (make-poseteq 'z))
-  (poset-add! P 'y 'z)
-  (poset-add! P 'x 'y)
-  (poset-add! P 'w 'y)
-  (define ≤ (poset-<= P))
-  (for ([s '(x y z w)])
-    (check-true (≤ s s)))
-  (for ([a '(x x y w w)]
-        [b '(y z z y z)])
-    (check-true (≤ a b))
-    (check-false (≤ b a))))
+  (define pos '([b c d] [a b] [e b]))
+  (test-equal (poset<= pos 'a 'a) #t)
+  (test-equal (poset< pos 'a 'a) #f)
+  (test-equal (poset<= pos 'a 'b) #t)
+  (test-equal (poset<= pos 'a 'c) #t)
+  (test-equal (poset<= pos 'a 'd) #t)
+  (test-equal (poset<= pos 'a 'e) #f)
+  (test-equal (poset<= pos 'e 'a) #f)
+  (test-equal (poset<= pos 'e 'd) #t)
+  )
+
+(define-metafunction Base
+  pos-≤ : ([any < any ...] ...) any any -> boolean
+  [(pos-≤ ([any_1 < any_2 ...] ...) any_l any_r)
+   ,(poset<= (term ([any_1 any_2 ...] ...))
+             (term any_l)
+             (term any_r)
+             #:equal? (default-equiv))])
+
+(define-metafunction Base
+  pos-< : ([any < any ...] ...) any any -> boolean
+  [(pos-< ([any_1 < any_2 ...] ...) any_l any_r)
+   ,(poset< (term ([any_1 any_2 ...] ...))
+            (term any_l)
+            (term any_r)
+            #:equal? (default-equiv))])
+
+(module+ test
+  (define P (term ([b < c d] [a < b] [e < b])))
+  (test-equal (term (pos-≤ ,P e e)) #t)
+  (test-equal (term (pos-< ,P e d)) #t)
+  (test-equal (term (pos-< ,P e a)) #f)
+  (test-results))
