@@ -2,7 +2,7 @@
 (require redex/reduction-semantics
          (only-in racket/list remf splitf-at))
 (provide Base
-         find rem chg)
+         find rem chg ext)
 
 (define-language Base)
 
@@ -46,6 +46,14 @@
 (module+ test
   (test-equal (term (chg x 9 ([y 3] [x 4] [x 5])))
               (term ([y 3] [x 9] [x 5]))))
+
+(define-metafunction Base
+  ;; add an element to the front of a list
+  ext : any (any ...) -> (any ...)
+  [(ext any_1 (any_2 ...)) (any_1 any_2 ...)])
+
+(module+ test
+  (test-equal (term (ext 1 (2 3 4))) (term (1 2 3 4))))
 
 (module+ test
   (test-results))

@@ -48,14 +48,15 @@
 ;; ------------------------------------------------------------
 ;; shadow heap
 
-(define-extended-language Rust+S Rust
+(define-extended-language Rust+S Rust+T
   ; loan "bank"
   [$ ::= ((ℓ q) ...)]
   ; shadow types
   [sτ ::=
       BT
       uninit
-      [Ptr s]]
+      [Ptr s]
+      [Ref ℓ q s]]
   ; shadows
   [s ::= ($ sτ)]
   ; shadow heap
