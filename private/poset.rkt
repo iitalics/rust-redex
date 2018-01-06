@@ -2,7 +2,7 @@
 (require redex/reduction-semantics
          "redex-util.rkt")
 
-(provide poset<= poset< pos-≤ pos-< pos-ext)
+(provide poset<= poset< pos-≤? pos-<? pos-≤ pos-ext)
 
 ;; returns #t if x ≤ y according to the partially ordered
 ;; set 'po'. the set is represented as a list of (cons a bs),
@@ -35,26 +35,32 @@
   )
 
 (define-metafunction Base
-  pos-≤ : ([any < any ...] ...) any any -> boolean
-  [(pos-≤ ([any_1 < any_2 ...] ...) any_l any_r)
+  pos-≤? : ([any < any ...] ...) any any -> boolean
+  [(pos-≤? ([any_1 < any_2 ...] ...) any_l any_r)
    ,(poset<= (term ([any_1 any_2 ...] ...))
              (term any_l)
              (term any_r)
              #:equal? (default-equiv))])
 
 (define-metafunction Base
-  pos-< : ([any < any ...] ...) any any -> boolean
-  [(pos-< ([any_1 < any_2 ...] ...) any_l any_r)
+  pos-<? : ([any < any ...] ...) any any -> boolean
+  [(pos-<? ([any_1 < any_2 ...] ...) any_l any_r)
    ,(poset< (term ([any_1 any_2 ...] ...))
             (term any_l)
             (term any_r)
             #:equal? (default-equiv))])
 
+(define-relation Base
+  pos-≤ ⊂ ([any < any ...] ...) × any × any
+  [(pos-≤ any_pos any_l any_r)
+   (where #t (pos-≤? any_pos any_l any_r))])
+
 (module+ test
   (define P (term ([b < c d] [a < b] [e < b])))
-  (test-equal (term (pos-≤ ,P e e)) #t)
-  (test-equal (term (pos-< ,P e d)) #t)
-  (test-equal (term (pos-< ,P e a)) #f))
+  (test-equal (term (pos-≤? ,P e e)) #t)
+  (test-equal (term (pos-<? ,P e d)) #t)
+  (test-equal (term (pos-<? ,P e a)) #f)
+  (test-judgment-holds (pos-≤ ,P e d)))
 
 (define-metafunction Base
   ;; extend a poset with a new value, and have that be < all other

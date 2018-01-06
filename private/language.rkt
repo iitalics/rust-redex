@@ -11,9 +11,10 @@
   [i ::= integer]
   [q ::= MUT IMM]
   ; l-values
-  [lv ::=
-      x
-      (* lv)]
+  [lv ::= (in-hole path x)]
+  [path ::=
+     hole
+     (* path)]
   ; r-values
   [e ::=
      c
@@ -38,14 +39,14 @@
      BT
      [Ref ℓ q τ]
      [Ptr τ]]
+  ; move vs copy
+  [move/copy ::= MOVE COPY]
   ; type context
   [Γ ::= ([x τ] ...)]
   ; variable lifetimes
   [L ::= ([x ℓ] ...)]
   ; lifetime poset
-  [LT ::= ([ℓ < ℓ ...] ...)]
-  ; move vs copy
-  [m/c ::= MOVE COPY])
+  [LT ::= ([ℓ < ℓ ...] ...)])
 
 ;; ------------------------------------------------------------
 ;; shadow heap
