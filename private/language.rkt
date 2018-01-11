@@ -38,7 +38,15 @@
   [τ ::=
      BT
      [Ref ℓ q τ]
-     [Ptr τ]]
+     [Ptr τ]
+     ; NOTE: this type is confusing the fuck out of me,
+     ;       since it reuses the * (deref) path.
+     ;       i may delete it, or i think i can come to terms
+     ;       with it by understanding that:
+     ;         derefing an owned pointer is basically the same as
+     ;         accessing a tuple field. derefing a borrowed pointer
+     ;         is something else and needs special rules.
+     ]
   ; move vs copy
   [move/copy ::= MOVE COPY]
   ; type context
@@ -60,6 +68,8 @@
       [Ptr s]]
   ; shadows
   ;   NOTE: τ ⊆ s
+  ;   TODO: shadow ref types don't need lifetimes!
+  ;         but removing them would break our precious subsumption
   [s ::= (loan ℓ q s) sτ]
   ; shadow heap
   [Y ::= ([x s] ...)])

@@ -85,6 +85,12 @@
 ;; --------------------------------------------------
 ;; ensuring loan promises can be upheld
 
+;; discussion:
+;;   "we cannot promise that the interior of a borrowed reference will be
+;;   valid for longer than that reference's lifetime, nor can we promise
+;;   that the interior of a immutable borrowed reference will have unique
+;;  pg 25
+
 (define-judgment-form Rust+S
   #:contract (valid-for? LT L Γ lv ℓ)
   #:mode     (valid-for? I  I I I  I)
