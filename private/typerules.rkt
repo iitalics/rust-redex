@@ -94,10 +94,21 @@
 (define-judgment-form Rust+S
   #:contract (valid-for? LT L Γ lv ℓ)
   #:mode     (valid-for? I  I I I  I)
-  [(where [ℓ_1] (find x L))
-   (LT ℓ . pos-≤ . ℓ_1)
+  [(where [ℓ_x] (find x L))
+   (LT ℓ . pos-≤ . ℓ_x)
    ------ "VF-Base"
-   (valid-for? LT L Γ (in-hole path x) ℓ)])
+   (valid-for? LT L Γ x ℓ)]
+
+  [(⊢lv Γ lv [Ptr _])
+   (valid-for? LT L Γ lv ℓ)
+   ------ "VF-Deown"
+   (valid-for? LT L Γ (* lv) ℓ)]
+
+  [(⊢lv Γ lv [Ref ℓ_ref _ _])
+   (LT ℓ . pos-≤ . ℓ_ref)
+   ; note: not recursive!
+   ------ "VF-Deref"
+   (valid-for? LT L Γ (* lv) ℓ)])
 
 (define-judgment-form Rust+S
   #:contract (freezable-for? LT Γ lv ℓ)
@@ -105,19 +116,19 @@
   [------ "FF-Base"
    (freezable-for? LT Γ x ℓ)]
 
-  [(⊢lv Γ lv [Ptr τ])
+  [(⊢lv Γ lv [Ptr _])
    (freezable-for? LT Γ lv ℓ)
    ------ "FF-Deown"
    (freezable-for? LT Γ (* lv) ℓ)]
 
-  [(⊢lv Γ lv [Ref ℓ_1 IMM τ])
-   (LT ℓ . pos-≤ . ℓ_1)
+  [(⊢lv Γ lv [Ref ℓ_ref IMM _])
+   (LT ℓ . pos-≤ . ℓ_ref)
    ------ "FF-DerefImm"
    (freezable-for? LT Γ (* lv) ℓ)]
 
-  [(⊢lv Γ lv [Ref ℓ_1 MUT τ])
+  [(⊢lv Γ lv [Ref ℓ_ref MUT _])
+   (LT ℓ . pos-≤ . ℓ_ref)
    (freezable-for? LT Γ lv ℓ)
-   (LT ℓ . pos-≤ . ℓ_1)
    ------ "FF-DerefMut"
    (freezable-for? LT Γ (* lv) ℓ)])
 
@@ -127,14 +138,14 @@
   [------ "UF-Base"
    (unique-for? LT Γ x ℓ)]
 
-  [(⊢lv Γ lv [Ptr τ])
+  [(⊢lv Γ lv [Ptr _])
    (unique-for? LT Γ lv ℓ)
    ------ "UF-Deown"
    (unique-for? LT Γ (* lv) ℓ)]
 
-  [(⊢lv Γ lv [Ref ℓ_1 MUT τ])
+  [(⊢lv Γ lv [Ref ℓ_ref MUT _])
+   (LT ℓ . pos-≤ . ℓ_ref)
    (unique-for? LT Γ lv ℓ)
-   (LT ℓ . pos-≤ . ℓ_1)
    ------ "UF-DerefMut"
    (unique-for? LT Γ (* lv) ℓ)])
 
@@ -228,25 +239,55 @@
                           (let ℓ ([x 4]) x) Integer
                           ()))
 
-  (define LT1 '([ℓ2 < ℓ1] [ℓ1 <]))
+  ; ℓ3 < ℓ2 < ℓ1 < ℓ0 < ø
+  (define the-LT '([ℓ3 < ℓ2 ℓ1 ℓ0] [ℓ2 < ℓ1 ℓ0] [ℓ1 < ℓ0] [ℓ0 <]))
+
   (define L1  '([y ℓ2] [x ℓ1]))
   (define Γ1  '([y Integer] [x [Ptr Integer]]))
   (define Y1  Γ1)
 
   (test-equal (judgment-holds (⊢lv ,Γ1 x τ) τ) '[[Ptr Integer]])
-  (test-judgment-holds (,LT1 ℓ2 . pos-≤ . ℓ1))
+  (test-judgment-holds (,the-LT ℓ2 . pos-≤ . ℓ1))
   (test-judgment-holds (can-read? ,Y1 x))
-  (test-judgment-holds (valid-for? ,LT1 ,L1 ,Γ1 x ℓ2))
-  (test-judgment-holds (freezable-for? ,LT1 ,Γ1 x ℓ2))
+  (test-judgment-holds (can-write? ,Y1 x))
+  (test-judgment-holds (valid-for? ,the-LT ,L1 ,Γ1 x ℓ2))
+  (test-judgment-holds (freezable-for? ,the-LT ,Γ1 x ℓ2))
 
-  (test-equal (judgment-holds (⊢ ,LT1 ,L1 ,Γ1 ,Y1 (ref ℓ1 IMM x) τ _) τ)
-              '[(Ref ℓ1 IMM [Ptr Integer])]) ; borrow x for duration of x
-  (test-equal (judgment-holds (⊢ ,LT1 ,L1 ,Γ1 ,Y1 (ref ℓ1 IMM (* x)) τ _) τ)
-              '[(Ref ℓ1 IMM Integer)]) ; borrow *x for duration of x
-  (test-equal (judgment-holds (⊢ ,LT1 ,L1 ,Γ1 ,Y1 (ref ℓ2 IMM x) τ _) τ)
-              '[(Ref ℓ2 IMM [Ptr Integer])]) ; borrow x for duration of y
-  (test-equal (judgment-holds (⊢ ,LT1 ,L1 ,Γ1 ,Y1 (ref ℓ1 IMM y) τ _) τ)
-              '()) ; borrow y for duration of x
+  ; can only borrow y for ℓ < L(y) = ℓ2
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ3 IMM y) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ2 IMM y) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ1 IMM y) _ _)) #f)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ0 IMM y) _ _)) #f)
+
+  ; lifetime constraints on x are the same as (* x), since x is a Ptr
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ2 IMM x) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ1 IMM x) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ0 IMM x) _ _)) #f)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ2 IMM (* x)) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ1 IMM (* x)) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L1 ,Γ1 ,Y1 (ref ℓ0 IMM (* x)) _ _)) #f)
+
+  (define L2 '([z ℓ2]))
+  (define Γ2 '([z [Ref ℓ1 IMM Integer]]))
+  (define Y2 Γ2)
+
+  ; cannot borrow for ℓ1 because ℓ1 > L(z) = ℓ2
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ3 IMM z) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ2 IMM z) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ1 IMM z) _ _)) #f)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ0 IMM z) _ _)) #f)
+
+  ; CAN borrow for ℓ1 because we don't care about L(z), only the sub-lifetime (ℓ1)
+  ; but cannot borrow for ℓ0 because ℓ0 > ℓ1
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ3 IMM (* z)) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ2 IMM (* z)) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ1 IMM (* z)) _ _)) #t)
+  (test-equal (judgment-holds (⊢ ,the-LT ,L2 ,Γ2 ,Y2 (ref ℓ0 IMM (* z)) _ _)) #f)
+
+  (test-equal (judgment-holds (can-read? ,Y2 z)) #t)
+  (test-equal (judgment-holds (can-write? ,Y2 z)) #t)
+  (test-equal (judgment-holds (can-read? ,Y2 (* z))) #t)
+  ;(test-equal (judgment-holds (can-write? ,Y2 (* z))) #f)
 
   )
 
