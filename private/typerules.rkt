@@ -88,66 +88,26 @@
 ;; discussion:
 ;;   "we cannot promise that the interior of a borrowed reference will be
 ;;   valid for longer than that reference's lifetime, nor can we promise
-;;   that the interior of a immutable borrowed reference will have unique
+;;   that the interior of a immutable borrowed reference will have unique access"
 ;;  pg 25
 
 (define-judgment-form Rust+S
   #:contract (valid-for? LT L Γ lv ℓ)
   #:mode     (valid-for? I  I I I  I)
-  [(where [ℓ_x] (find x L))
-   (LT ℓ . pos-≤ . ℓ_x)
-   ------ "VF-Base"
-   (valid-for? LT L Γ x ℓ)]
-
-  [(⊢lv Γ lv [Ptr _])
-   (valid-for? LT L Γ lv ℓ)
-   ------ "VF-Deown"
-   (valid-for? LT L Γ (* lv) ℓ)]
-
-  [(⊢lv Γ lv [Ref ℓ_ref _ _])
-   (LT ℓ . pos-≤ . ℓ_ref)
-   ; note: not recursive!
-   ------ "VF-Deref"
-   (valid-for? LT L Γ (* lv) ℓ)])
+  [------ "VF" ; TODO: valid-for?
+   (valid-for? LT L Γ lv ℓ)])
 
 (define-judgment-form Rust+S
   #:contract (freezable-for? LT Γ lv ℓ)
   #:mode     (freezable-for? I  I I  I)
-  [------ "FF-Base"
-   (freezable-for? LT Γ x ℓ)]
-
-  [(⊢lv Γ lv [Ptr _])
-   (freezable-for? LT Γ lv ℓ)
-   ------ "FF-Deown"
-   (freezable-for? LT Γ (* lv) ℓ)]
-
-  [(⊢lv Γ lv [Ref ℓ_ref IMM _])
-   (LT ℓ . pos-≤ . ℓ_ref)
-   ------ "FF-DerefImm"
-   (freezable-for? LT Γ (* lv) ℓ)]
-
-  [(⊢lv Γ lv [Ref ℓ_ref MUT _])
-   (LT ℓ . pos-≤ . ℓ_ref)
-   (freezable-for? LT Γ lv ℓ)
-   ------ "FF-DerefMut"
-   (freezable-for? LT Γ (* lv) ℓ)])
+  [------ "FF" ; TODO: freezable-for?
+   (freezable-for? LT Γ lv ℓ)])
 
 (define-judgment-form Rust+S
   #:contract (unique-for? LT Γ lv ℓ)
   #:mode     (unique-for? I  I I  I)
-  [------ "UF-Base"
-   (unique-for? LT Γ x ℓ)]
-
-  [(⊢lv Γ lv [Ptr _])
-   (unique-for? LT Γ lv ℓ)
-   ------ "UF-Deown"
-   (unique-for? LT Γ (* lv) ℓ)]
-
-  [(⊢lv Γ lv [Ref ℓ_ref MUT _])
-   (LT ℓ . pos-≤ . ℓ_ref)
-   (unique-for? LT Γ lv ℓ)
-   ------ "UF-DerefMut"
-   (unique-for? LT Γ (* lv) ℓ)])
+  [------ "UF" ; TODO: unique-for?
+   (unique-for? LT Γ lv ℓ)])
 
 ;; NOTE: UF => FF
 
