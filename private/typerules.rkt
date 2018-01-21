@@ -35,23 +35,34 @@
    (⊢c unit Unit)])
 
 (define-judgment-form Rust+T
-  ;; typecheck l-values
-  #:mode (⊢lv I I O)
-  #:contract (⊢lv Γ lv τ)
+  ;; typecheck l-value, collecting the lifetimes/mutability
+  ;; of each dereference. the first element of the bank $ is the
+  ;; most shallow reference, and the last is the deepest.
+  #:mode     (⊢lv* I I  O O)
+  #:contract (⊢lv* Γ lv τ $)
 
   [(where [τ] (find x Γ))
    ------ "TL-Var"
-   (⊢lv Γ x τ)]
+   (⊢lv* Γ x τ ())]
 
-  [(⊢lv Γ lv [Ref _ _ τ])
-   ------ "TL-Ref"
-   (⊢lv Γ (* lv) τ)]
+  [(⊢lv* Γ lv [Ref ℓ q τ] $)
+   ------ "TL-Deref"
+   (⊢lv* Γ (* lv) τ ([ℓ q] . $))]
 
-  [(⊢lv Γ lv [Ptr τ])
-   ------ "TL-Ptr"
-   (⊢lv Γ (* lv) τ)])
+  [(⊢lv* Γ lv [Ptr τ] $)
+   ------ "TL-Deown"
+   (⊢lv* Γ (* lv) τ $)])
+
+(define-judgment-form Rust+T
+  ;; typecheck l-values
+  #:mode     (⊢lv I I  O)
+  #:contract (⊢lv Γ lv τ)
+  [(⊢lv* Γ lv τ $)
+   ------ "TL"
+   (⊢lv Γ lv τ)])
 
 (module+ test
+  (test-judgment-holds (⊢lv ([i Integer]) i Integer))
   (test-judgment-holds (⊢lv ([x [Ptr Integer]]) x [Ptr Integer]))
   (test-judgment-holds (⊢lv ([x [Ptr Integer]]) (* x) Integer))
   (test-judgment-holds (⊢lv ([x [Ptr [Ptr Integer]]]) (* (* x)) Integer))
@@ -94,19 +105,45 @@
 (define-judgment-form Rust+S
   #:contract (valid-for? LT L Γ lv ℓ)
   #:mode     (valid-for? I  I I I  I)
-  [------ "VF" ; TODO: valid-for?
+  [(⊢lv* Γ lv τ ())
+   (where (in-hole path x) lv)
+   (where [ℓ_x] (find x L))
+   (LT ℓ . pos-≤ . ℓ_x)
+   ------ "VF-Base"
+   (valid-for? LT L Γ lv ℓ)]
+
+  [(⊢lv* Γ lv τ ([ℓ_1 q_1] [ℓ_i q_i] ...))
+   (LT ℓ . pos-≤ . ℓ_1)
+   ------ "VF-Deref"
    (valid-for? LT L Γ lv ℓ)])
 
 (define-judgment-form Rust+S
   #:contract (freezable-for? LT Γ lv ℓ)
   #:mode     (freezable-for? I  I I  I)
-  [------ "FF" ; TODO: freezable-for?
+  [(⊢lv* Γ lv τ ())
+   ------ "FF"
+   (freezable-for? LT Γ lv ℓ)]
+
+  [(⊢lv* Γ lv τ ([ℓ_i q_i] ... [ℓ_ref IMM] [ℓ_j MUT] ...))
+   (LT ℓ . pos-≤ . ℓ_ref)
+   ------ "FF-DerefImm"
+   (freezable-for? LT Γ lv ℓ)]
+
+  [(⊢lv* Γ lv τ ([ℓ_ref MUT] [ℓ_j MUT] ...))
+   (LT ℓ . pos-≤ . ℓ_ref)
+   ------ "FF-DerefMut"
    (freezable-for? LT Γ lv ℓ)])
 
 (define-judgment-form Rust+S
   #:contract (unique-for? LT Γ lv ℓ)
   #:mode     (unique-for? I  I I  I)
-  [------ "UF" ; TODO: unique-for?
+  [(⊢lv* Γ lv τ ())
+   ------ "UF"
+   (unique-for? LT Γ lv ℓ)]
+
+  [(⊢lv* Γ lv τ ([ℓ_ref MUT] [ℓ_i MUT] ...))
+   (LG ℓ . pos-≤ . ℓ_ref)
+   ------ "UF-Ref"
    (unique-for? LT Γ lv ℓ)])
 
 ;; NOTE: UF => FF

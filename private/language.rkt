@@ -9,7 +9,8 @@
 (define-extended-language Rust Base
   [x ℓ ::= variable-not-otherwise-mentioned] ; variables, lifetimes
   [i ::= integer]
-  [q ::= MUT IMM]
+  [q ::= MUT IMM] ; for bank coherence: IMM < MUT
+  [$ ::= ([ℓ q] ...)]
   ; l-values
   [lv ::= (in-hole path x)]
   [path ::=
@@ -38,15 +39,7 @@
   [τ ::=
      BT
      [Ref ℓ q τ]
-     [Ptr τ]
-     ; NOTE: this type is confusing the fuck out of me,
-     ;       since it reuses the * (deref) path.
-     ;       i may delete it, or i think i can come to terms
-     ;       with it by understanding that:
-     ;         derefing an owned pointer is basically the same as
-     ;         accessing a tuple field. derefing a borrowed pointer
-     ;         is something else and needs special rules.
-     ]
+     [Ptr τ]]
   ; move vs copy
   [move/copy ::= MOVE COPY]
   ; type context
