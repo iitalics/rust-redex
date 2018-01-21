@@ -40,7 +40,6 @@
   ;; most shallow reference, and the last is the deepest.
   #:mode     (⊢lv* I I  O O)
   #:contract (⊢lv* Γ lv τ $)
-
   [(where [τ] (find x Γ))
    ------ "TL-Var"
    (⊢lv* Γ x τ ())]
@@ -58,7 +57,7 @@
   #:mode     (⊢lv I I  O)
   #:contract (⊢lv Γ lv τ)
   [(⊢lv* Γ lv τ $)
-   ------ "TL"
+   ------
    (⊢lv Γ lv τ)])
 
 (module+ test
@@ -102,7 +101,7 @@
 ;;   that the interior of a immutable borrowed reference will have unique access"
 ;;  pg 25
 
-(define-judgment-form Rust+S
+(define-judgment-form Rust+T
   #:contract (valid-for? LT L Γ lv ℓ)
   #:mode     (valid-for? I  I I I  I)
   [(⊢lv* Γ lv τ ())
@@ -117,7 +116,7 @@
    ------ "VF-Deref"
    (valid-for? LT L Γ lv ℓ)])
 
-(define-judgment-form Rust+S
+(define-judgment-form Rust+T
   #:contract (freezable-for? LT Γ lv ℓ)
   #:mode     (freezable-for? I  I I  I)
   [(⊢lv* Γ lv τ ())
@@ -134,7 +133,7 @@
    ------ "FF-DerefMut"
    (freezable-for? LT Γ lv ℓ)])
 
-(define-judgment-form Rust+S
+(define-judgment-form Rust+T
   #:contract (unique-for? LT Γ lv ℓ)
   #:mode     (unique-for? I  I I  I)
   [(⊢lv* Γ lv τ ())
